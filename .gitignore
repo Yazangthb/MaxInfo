@@ -1,0 +1,228 @@
+# -------------------------------------------------
+# OS / Editor
+# -------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*.bak
+*.tmp
+
+# -------------------------------------------------
+# Python / Virtualenv / Build
+# -------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+*.whl
+
+# pytest / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.coverage.xml
+nosetests.xml
+test-results/
+*.log
+
+# mypy / ruff / pylint
+.mypy_cache/
+.ruff_cache/
+.pylint.d/
+
+# -------------------------------------------------
+# Jupyter / Notebooks
+# -------------------------------------------------
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+*.nbconvert.ipynb
+
+# Notebook outputs / scratch
+notebooks/.ipynb_checkpoints/
+notebooks/**/.ipynb_checkpoints/
+scratch/
+tmp/
+data_tmp/
+
+# -------------------------------------------------
+# Environment files / Secrets (DO NOT COMMIT)
+# -------------------------------------------------
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+secrets/**
+
+# -------------------------------------------------
+# Logs
+# -------------------------------------------------
+logs/
+*.log
+uvicorn.log
+gunicorn.log
+
+# -------------------------------------------------
+# FastAPI / Uvicorn / Gunicorn runtime
+# -------------------------------------------------
+*.pid
+*.pid.lock
+
+# -------------------------------------------------
+# Database / Local state
+# -------------------------------------------------
+*.db
+*.sqlite
+*.sqlite3
+
+# Supabase (local)
+supabase/.branches/
+supabase/.temp/
+supabase/.cache/
+supabase/.env
+supabase/.env.*
+supabase/.DS_Store
+
+# -------------------------------------------------
+# Data (choose what you want to commit)
+# -------------------------------------------------
+data/
+datasets/
+raw/
+processed/
+interim/
+exports/
+
+# Allow committing small sample data if you create it
+!data/.gitkeep
+!datasets/.gitkeep
+
+# -------------------------------------------------
+# Model artifacts / ML caches
+# -------------------------------------------------
+models/
+checkpoints/
+weights/
+runs/
+wandb/
+mlruns/
+lightning_logs/
+tensorboard/
+tb_logs/
+
+# Hugging Face caches
+.hf_cache/
+hf_cache/
+.cache/huggingface/
+.cache/hf/
+cache/huggingface/
+cache/hf/
+
+# Torch / transformers caches
+.cache/torch/
+torch_cache/
+.cache/transformers/
+transformers_cache/
+
+# ONNX / TensorRT / compiled artifacts
+*.onnx
+*.engine
+*.plan
+*.trt
+*.so
+*.dylib
+*.dll
+
+# -------------------------------------------------
+# Media / uploads (runtime)
+# -------------------------------------------------
+uploads/
+outputs/
+results/
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.wav
+*.mp3
+
+# Images often generated during experiments
+*.png
+*.jpg
+*.jpeg
+*.tiff
+*.bmp
+
+# If you DO want to commit specific assets, add exceptions like:
+#!assets/**/*.png
+
+# -------------------------------------------------
+# Docs build
+# -------------------------------------------------
+site/
+docs/_build/
+*.pdf
+
+# -------------------------------------------------
+# Node (if you add later)
+# -------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+dist/
+.cache/
+
+# -------------------------------------------------
+# Docker / Compose
+# -------------------------------------------------
+*.tar
+docker-compose.override.yml
+
+# -------------------------------------------------
+# Terraform / infra (if you add later)
+# -------------------------------------------------
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+
+# -------------------------------------------------
+# Keep placeholder files
+# -------------------------------------------------
+!.gitkeep
+.env
+
+# -------------------------------------------------
+# personal files
+# -------------------------------------------------
+README copy.md
+/local_models
+
