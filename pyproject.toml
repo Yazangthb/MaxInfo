@@ -15,8 +15,10 @@ dependencies = [
   "torch",
   "transformers>=4.40",
   "accelerate>=0.28",
-  "matplotlib>=3.7",
+  "matplotlib>=3.8",
   "tqdm>=4.66",
+  "opencv-python",
+  "matplotlib-inline>=0.1.7",
 ]
 
 [tool.setuptools]
