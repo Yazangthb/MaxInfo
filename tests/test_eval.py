@@ -52,6 +52,26 @@ def test_errors_are_recorded_and_abort(tmp_path):
     assert len(recs) == 3 and all(r["pred"] is None and "NameError" in r["error"] for r in recs)
 
 
+def test_run_mcq_multi_item_major_and_resume(tmp_path):
+    from maxinfo.eval import run_mcq_multi
+
+    calls = []
+
+    def fn(name):
+        def answer(item):
+            calls.append((item.qid, name))
+            return {"text": "B" if name == "x" else "A"}
+        return answer
+
+    paths = {"x": str(tmp_path / "x.jsonl"), "y": str(tmp_path / "y.jsonl")}
+    run_mcq_multi(items(2), {"x": fn("x"), "y": fn("y")}, paths)
+    assert calls == [("q0", "x"), ("q0", "y"), ("q1", "x"), ("q1", "y")]
+    assert score(paths["x"])["overall"]["accuracy"] == 1.0 and score(paths["y"])["overall"]["accuracy"] == 0.0
+    calls.clear()
+    run_mcq_multi(items(3), {"x": fn("x"), "y": fn("y")}, paths)  # resumes: only q2 is new
+    assert calls == [("q2", "x"), ("q2", "y")]
+
+
 def test_resume_retries_only_failed(tmp_path):
     out = tmp_path / "r.jsonl"
     calls = []

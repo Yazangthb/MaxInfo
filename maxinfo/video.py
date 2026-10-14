@@ -64,8 +64,9 @@ def candidate_indices(
     return np.unique(np.clip(idx, lo, hi - 1))
 
 
-def sample_video(path: str, **kwargs) -> SampledVideo:
-    """Decode candidate frames with decord. kwargs as in `candidate_indices`."""
+def sample_video(path: str, *, num_threads: int = 1, **kwargs) -> SampledVideo:
+    """Decode candidate frames with decord. kwargs as in `candidate_indices`.
+    num_threads: decoder threads (0 = decord's automatic choice); frames are identical either way."""
     import os
 
     if not os.path.exists(path):
@@ -76,7 +77,7 @@ def sample_video(path: str, **kwargs) -> SampledVideo:
         pass
     from decord import VideoReader, cpu
 
-    vr = VideoReader(path, ctx=cpu(0), num_threads=1)
+    vr = VideoReader(path, ctx=cpu(0), num_threads=int(num_threads))
     native_fps = float(vr.get_avg_fps())
     total = len(vr)
     idx = candidate_indices(total, native_fps, **kwargs)

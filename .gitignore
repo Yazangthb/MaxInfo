@@ -6,3 +6,9 @@ runs/
 feats/
 *.npz
 *.mp4
+.venv-llava/
+data/
+external/
+logs/
+runs_smoke/
+runs_verify/

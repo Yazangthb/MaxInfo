@@ -39,6 +39,8 @@ def test_sample_video_timestamps():
     assert v.frames.shape[0] == 16 and v.frames.dtype == np.uint8
     assert np.allclose(v.timestamps, v.indices / v.native_fps)
     assert 0 <= v.timestamps.min() and v.timestamps.max() <= v.duration
+    v4 = sample_video(LOCAL_VIDEOS[0], num_frames=16, num_threads=4)  # threading must not change frames
+    assert np.array_equal(v.frames, v4.frames) and np.array_equal(v.indices, v4.indices)
 
 
 def test_frame_encoder_returns_projected_embedding(tmp_path):
