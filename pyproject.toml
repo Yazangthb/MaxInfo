@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "maxinfo"
+version = "0.2.0"
+description = "MaxInfo key-frame selection (rectangular MaxVol on frame embeddings), clean re-implementation with fixes"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24"]
+
+[project.optional-dependencies]
+# Encoders: transformers 4.x returns a tensor from get_image_features, 5.x returns a ModelOutput; both are handled.
+encoders = ["torch>=2.1", "transformers>=4.44,<6", "pillow>=10"]
+video = ["decord>=0.6.0", "pillow>=10"]
+eval = ["pandas>=2.0", "pyarrow>=14"]
+dev = ["pytest>=8", "scipy>=1.11"]
+
+[tool.setuptools.packages.find]
+include = ["maxinfo*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
