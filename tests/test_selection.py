@@ -86,8 +86,26 @@ def test_chunked_budget_and_coverage():
     assert len(r) <= 40
     chunk_of = np.minimum(r.indices // 32, 7)
     assert set(chunk_of) == set(range(8))  # every chunk represented
-    r_all = chunked_select(F, n_chunks=8, budget=None)
-    assert len(r_all) == r.num_before_budget
+    assert np.bincount(chunk_of).max() <= 5  # even split of the budget
+
+
+def test_chunked_small_chunks_still_select_distinct_frames():
+    """Regression: chunks with <= rank units used to keep their first frames in temporal order."""
+    rng = np.random.default_rng(0)
+    base = rng.normal(size=(1, 64)) + 3.0
+    F = np.repeat(base, 64, axis=0) + 1e-3 * rng.normal(size=(64, 64))
+    distinct = [6, 7, 14, 15, 22, 23, 30, 31]  # last frames of each 8-frame chunk are different
+    F[distinct] += 2.0 * rng.normal(size=(len(distinct), 64))
+    r = chunked_select(F, n_chunks=4, budget=8, rank=8)  # 16 frames per chunk, 2 per chunk
+    assert set(r.indices) <= set(distinct) | set(range(32, 64))
+    first_half = [i for i in r.indices if i < 32]
+    assert len(first_half) == 4 and set(first_half) <= set(distinct)
+
+
+def test_n_le_rank_order_is_by_volume():
+    A = np.eye(4)[[0, 0, 1, 2]] * np.array([[1.0], [1.0], [0.1], [5.0]])  # rows 0,1 duplicates; row 3 largest
+    order = rect_maxvol(A, 0.3)
+    assert sorted(order) == [0, 1, 2, 3] and order[0] == 3 and set(order[:3]) == {3, 0, 2}
 
 
 def test_center_removes_mean_direction():

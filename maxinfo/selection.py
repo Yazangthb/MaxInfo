@@ -58,22 +58,30 @@ def svd_basis(features: np.ndarray, rank: int, *, center: bool = False) -> np.nd
     return U[:, : max(1, min(int(rank), keep))]
 
 
+def _pivoted_gs(A: np.ndarray, k: int) -> list[int]:
+    """k rows chosen greedily by largest residual norm after projecting out the rows already chosen
+    (= QR with column pivoting on A^T). Rows with zero residual are taken last, in index order."""
+    R = np.array(A, dtype=np.float64, copy=True)
+    piv: list[int] = []
+    for _ in range(min(k, R.shape[0])):
+        norms = np.einsum("ij,ij->i", R, R)
+        norms[piv] = -1.0
+        i = int(np.argmax(norms))
+        piv.append(i)
+        nrm = np.sqrt(norms[i])
+        if nrm > 1e-12:
+            v = R[i] / nrm
+            R -= np.outer(R @ v, v)
+    return piv
+
+
 def _square_maxvol(A: np.ndarray, tol: float = 1.05, max_iters: int = 100) -> list[int]:
     """Square MaxVol on A (n x r, full column rank): r rows with locally maximal |det|.
 
     Initialised by greedy pivoted Gram-Schmidt (= QR with column pivoting on A^T), then
     improved by row swaps while some |C_ij| > tol, with C = A @ inv(A[piv]).
     """
-    n, r = A.shape
-    R = A.copy()
-    piv: list[int] = []
-    for _ in range(r):
-        norms = np.einsum("ij,ij->i", R, R)
-        norms[piv] = -1.0
-        i = int(np.argmax(norms))
-        piv.append(i)
-        v = R[i] / np.linalg.norm(R[i])
-        R -= np.outer(R @ v, v)
+    piv = _pivoted_gs(A, A.shape[1])
     for _ in range(max_iters):
         C = np.linalg.solve(A[piv].T, A.T).T  # A @ inv(A[piv])
         i, j = np.unravel_index(int(np.argmax(np.abs(C))), C.shape)
@@ -107,7 +115,8 @@ def rect_maxvol(
     if tol <= 0:
         raise ValueError("tol must be > 0")
     if n <= r:
-        return list(range(n))
+        # Every row is kept; order them by pivoted Gram-Schmidt so a truncation keeps the most independent.
+        return _pivoted_gs(A, n)
 
     max_k = n if max_k is None else int(max(1, min(max_k, n)))
     min_k = 0 if min_k is None else int(min(max(min_k, 0), max_k))
@@ -229,9 +238,12 @@ def chunked_select(
     """Chunk-based MaxInfo (paper §3.5): split candidates into `n_chunks` contiguous chunks and
     run MaxVol inside each, so every part of the video is represented.
 
-    The paper does not say how the global budget is enforced for this variant. Here, if the
-    union exceeds `budget`, each chunk keeps a share of the budget proportional to its pivot
-    count (at least one frame per chunk while the budget allows), taken in greedy order.
+    The paper does not say how the global budget is enforced for this variant. Here the budget is
+    split evenly across the (equal-sized) chunks before selection, so each chunk runs MaxVol with
+    its own cap and rank <= that cap. Splitting afterwards does not work: a small chunk with
+    rank >= its size has an orthogonal SVD basis, every subset has the same volume, and the
+    "selection" degenerates to temporal order. A chunk may return fewer frames than its share
+    when MaxVol's tolerance is met early (it is redundant).
     """
     F = np.asarray(features)
     n = F.shape[0]
@@ -243,31 +255,29 @@ def chunked_select(
     n_units = -(-n // group_size)
     k = int(max(1, min(n_chunks, n_units)))
     bounds = np.linspace(0, n_units, k + 1).round().astype(int) * group_size
-    per_chunk: list[np.ndarray] = []
-    for a, b in zip(bounds[:-1], bounds[1:]):
-        b = min(b, n)
-        if b <= a:
-            continue
-        res = select_frames(F[a:b], rank=rank, tol=tol, center=center, group_size=group_size)
-        per_chunk.append(res.order + a)
+    chunks = [(a, min(b, n)) for a, b in zip(bounds[:-1], bounds[1:]) if min(b, n) > a]
 
-    total = sum(len(c) for c in per_chunk)
-    if budget is not None and total > budget:
-        unit = group_size
-        units_per_chunk = np.array([len(c) // unit or 1 for c in per_chunk], dtype=float)
-        budget_units = max(1, budget // unit)
-        alloc = np.floor(units_per_chunk / units_per_chunk.sum() * budget_units).astype(int)
-        if budget_units >= len(per_chunk):
-            alloc = np.maximum(alloc, 1)
-        # Hand out leftover units to the chunks with the largest remainders / most pivots.
-        while alloc.sum() < budget_units:
-            room = units_per_chunk - alloc
+    if budget is None:
+        shares = [None] * len(chunks)
+    else:
+        budget_units = max(1, int(budget) // group_size)
+        sizes = np.array([-(-(b - a) // group_size) for a, b in chunks])
+        alloc = np.zeros(len(chunks), dtype=int)
+        for _ in range(budget_units):  # round-robin: even split, never more than a chunk holds
+            room = sizes - alloc
             if room.max() <= 0:
                 break
-            alloc[int(np.argmax(room))] += 1
-        while alloc.sum() > budget_units:
-            alloc[int(np.argmax(alloc))] -= 1
-        per_chunk = [c[: a * unit] for c, a in zip(per_chunk, alloc)]
+            alloc[int(np.argmax((room > 0) * (sizes.max() + 1) - alloc))] += 1
+        shares = [int(u) * group_size for u in alloc]
+
+    per_chunk: list[np.ndarray] = []
+    total = 0
+    for (a, b), share in zip(chunks, shares):
+        if share == 0:
+            continue
+        res = select_frames(F[a:b], budget=share, rank=rank, tol=tol, center=center, group_size=group_size)
+        per_chunk.append(res.order + a)
+        total += res.num_before_budget
 
     order = np.concatenate(per_chunk).astype(int) if per_chunk else np.zeros(0, dtype=int)
     return SelectionResult(np.sort(order), order, total, params)

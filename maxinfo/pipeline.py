@@ -49,12 +49,21 @@ class MaxInfo:
         frames, times = out.video.pil(), out.video.timestamps
     """
 
-    def __init__(self, encoder, config: MaxInfoConfig | None = None):
+    def __init__(self, encoder, config: MaxInfoConfig | None = None, *, feature_cache: dict | None = None):
+        """feature_cache: optional dict shared between MaxInfo instances (e.g. several configs evaluated
+        on the same videos) so each video's candidates are embedded once."""
         self.encoder = encoder
         self.config = config or MaxInfoConfig()
+        self.feature_cache = feature_cache
 
-    def select(self, candidates: SampledVideo, budget: int | None) -> MaxInfoOutput:
-        feats = self.encoder(candidates.pil())
+    def select(self, candidates: SampledVideo, budget: int | None, *, cache_key=None) -> MaxInfoOutput:
+        feats = None
+        if self.feature_cache is not None and cache_key is not None:
+            feats = self.feature_cache.get(cache_key)
+        if feats is None:
+            feats = self.encoder(candidates.pil())
+            if self.feature_cache is not None and cache_key is not None:
+                self.feature_cache[cache_key] = feats
         sel = self.config.select(feats, budget)
         return MaxInfoOutput(candidates.subset(sel.indices), candidates, sel, feats)
 
@@ -63,7 +72,7 @@ class MaxInfo:
         if num_candidates is None and fps is None:
             num_candidates = budget  # fast version
         cand = sample_video(path, num_frames=num_candidates, fps=fps, max_frames=max_candidates)
-        return self.select(cand, budget)
+        return self.select(cand, budget, cache_key=(path, cand.indices.tobytes()))
 
 
 def uniform_baseline(path: str, budget: int) -> SampledVideo:

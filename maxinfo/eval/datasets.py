@@ -43,19 +43,31 @@ def _strip_letter(opt: str) -> str:
     return re.sub(r"^\s*\(?[A-J][.)]\s*", "", opt).strip()
 
 
-def load_videomme(parquet_path: str, video_folder: str, *, durations=None) -> list[MCQItem]:
+def load_videomme(parquet_path: str, video_folder: str, *, durations=None, available_only: bool = False) -> list[MCQItem]:
     """lmms-lab/Video-MME: fields video_id, videoID, duration, domain, sub_category, task_type,
-    question_id, question, options (['A. ...', ...]), answer (letter)."""
+    question_id, question, options (['A. ...', ...]), answer (letter).
+
+    available_only=True keeps only questions whose video is in `video_folder` (for subsets) and
+    prints how many were skipped; otherwise a missing video raises."""
     import pandas as pd
 
-    items = []
+    items, skipped = [], 0
     for rec in pd.read_parquet(parquet_path).to_dict("records"):
         _require(rec, ["videoID", "question_id", "question", "options", "answer"], "Video-MME")
         if durations and rec.get("duration") not in durations:
             continue
-        items.append(MCQItem(str(rec["question_id"]), _find_video(video_folder, rec["videoID"]), rec["question"],
+        try:
+            path = _find_video(video_folder, rec["videoID"])
+        except FileNotFoundError:
+            if not available_only:
+                raise
+            skipped += 1
+            continue
+        items.append(MCQItem(str(rec["question_id"]), path, rec["question"],
                              [_strip_letter(o) for o in rec["options"]], str(rec["answer"]).strip(),
                              {k: rec.get(k) for k in ("duration", "domain", "sub_category", "task_type")}))
+    if skipped:
+        print(f"Video-MME: {len(items)} questions with local videos, {skipped} skipped (video not in {video_folder})")
     return items
 
 
