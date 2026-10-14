@@ -82,6 +82,8 @@ def main():
     ap.add_argument("--budget", type=int, default=64)
     ap.add_argument("--candidates", type=int, default=128)
     ap.add_argument("--encoder-device", default=None)
+    ap.add_argument("--llava-vision-tower", default=None,
+                    help="local SigLIP stub dir (see scripts/verify_llava_weights.py); verify before use")
     ap.add_argument("--limit", type=int, default=None, help="first N questions only")
     ap.add_argument("--dry-run", action="store_true", help="print selections and prompts, do not load the VLLM")
     args = ap.parse_args()
@@ -128,7 +130,7 @@ def main():
         generate = load_qwen2_vl(args.model_path)
     else:
         from maxinfo.models import load_llava_video
-        generate = load_llava_video(args.model_path)
+        generate = load_llava_video(args.model_path, vision_tower=args.llava_vision_tower)
 
     for k, (c, use_time) in conds.items():
         path = os.path.join(out_dir, f"{k}.jsonl")

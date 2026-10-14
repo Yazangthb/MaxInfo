@@ -55,21 +55,37 @@ def make_answer_fn(generate: GenerateFn, frames_fn: FramesFn, *, use_time_instru
     return answer
 
 
+def load_llava_video_model(model_path: str = "lmms-lab/LLaVA-Video-7B-Qwen2", *, attn_implementation: str = "sdpa",
+                           vision_tower: str | None = None):
+    """Returns (tokenizer, model, image_processor).
+
+    The builder defaults to flash_attention_2; `sdpa` avoids that dependency. LLaVA-Video checkpoints
+    contain the (fine-tuned) SigLIP vision tower, but LLaVA-NeXT first builds the tower from
+    `google/siglip-so400m-patch14-384` (a 3.5 GB download that is then overwritten). `vision_tower`
+    can point to a local directory with that model's config.json and an empty weights file to skip
+    the download; check the result with scripts/verify_llava_weights.py.
+    """
+    from llava.model.builder import load_pretrained_model
+
+    overwrite = {"mm_vision_tower": vision_tower} if vision_tower else None
+    tokenizer, model, processor, _ = load_pretrained_model(model_path, None, "llava_qwen", torch_dtype="bfloat16",
+                                                           device_map="auto", attn_implementation=attn_implementation,
+                                                           overwrite_config=overwrite)
+    return tokenizer, model.eval(), processor
+
+
 def load_llava_video(model_path: str = "lmms-lab/LLaVA-Video-7B-Qwen2", *, attn_implementation: str = "sdpa",
-                     max_new_tokens: int = 16) -> GenerateFn:
-    """LLaVA-Video via LLaVA-NeXT (github.com/LLaVA-VL/LLaVA-NeXT). The builder defaults to
-    flash_attention_2; `sdpa` avoids that dependency."""
+                     vision_tower: str | None = None, max_new_tokens: int = 16) -> GenerateFn:
+    """LLaVA-Video via LLaVA-NeXT (github.com/LLaVA-VL/LLaVA-NeXT)."""
     import copy
 
     import torch
     from llava.constants import DEFAULT_IMAGE_TOKEN, IMAGE_TOKEN_INDEX
     from llava.conversation import conv_templates
     from llava.mm_utils import tokenizer_image_token
-    from llava.model.builder import load_pretrained_model
 
-    tokenizer, model, processor, _ = load_pretrained_model(model_path, None, "llava_qwen", torch_dtype="bfloat16",
-                                                           device_map="auto", attn_implementation=attn_implementation)
-    model.eval()
+    tokenizer, model, processor = load_llava_video_model(model_path, attn_implementation=attn_implementation,
+                                                         vision_tower=vision_tower)
 
     def generate(v: SampledVideo, prompt: str) -> str:
         pixels = processor.preprocess(v.frames, return_tensors="pt")["pixel_values"].to(model.device, torch.bfloat16)
