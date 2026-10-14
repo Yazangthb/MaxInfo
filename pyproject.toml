@@ -14,7 +14,7 @@ dependencies = ["numpy>=1.24"]
 # Encoders: transformers 4.x returns a tensor from get_image_features, 5.x returns a ModelOutput; both are handled.
 encoders = ["torch>=2.1", "transformers>=4.44,<6", "pillow>=10"]
 video = ["decord>=0.6.0", "pillow>=10"]
-eval = ["pandas>=2.0", "pyarrow>=14"]
+eval = ["pandas>=2.0", "pyarrow>=14", "remotezip>=0.12"]
 dev = ["pytest>=8", "scipy>=1.11"]
 
 [tool.setuptools.packages.find]
