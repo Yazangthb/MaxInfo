@@ -64,6 +64,11 @@ def main():
             for n in names:
                 ref = f.get_tensor(n)
                 got = params[n].detach().to("cpu", ref.dtype)
+                if n in ("model.embed_tokens.weight", "lm_head.weight") and got.shape[1:] == ref.shape[1:]:
+                    # The builder resizes the vocabulary to len(tokenizer) (152064 -> 151647 for
+                    # LLaVA-Video-Qwen2; the dropped rows are padding). Compare the shared rows.
+                    k = min(got.shape[0], ref.shape[0])
+                    got, ref = got[:k], ref[:k]
                 if got.shape != ref.shape or not torch.equal(got, ref):
                     mismatched.append(n)
                 checked += 1
